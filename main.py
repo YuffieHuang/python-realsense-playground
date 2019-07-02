@@ -216,6 +216,8 @@ def canny_edge_detector():
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     pipeline.start(config)
 
+    colorizer = rs.colorizer()
+
     alpha = 0.1
     run = True
     depth_frame = None
@@ -223,24 +225,32 @@ def canny_edge_detector():
     while True:
         frames = pipeline.wait_for_frames()
         if run:
-            depth_frame = frames.get_depth_frame()
-        depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=alpha)
-        print(np.max(depth_image))
-        depth_thresh = cv2.threshold(depth_image, np.average(depth_image), 255, 1)[1]
-        edges = cv2.Canny(depth_image, 50, 200)
+            depth_frame = colorizer.colorize(frames.get_depth_frame())
+            #depth_frame = frames.get_depth_frame()
 
-        ret, labels = cv2.connectedComponents(edges)
-        components = get_labeled_img(labels)
+        #depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=0.1)
+        depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
 
-        contours_img, contours, hierarchy = cv2.findContours(depth_thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        #depth_thresh = cv2.threshold(depth_image, np.average(depth_image), 255, 1)[1]
+        depth_thresh = cv2.threshold(depth_image, 50, 255, 1)[1]
+        imgray = cv2.cvtColor(depth_thresh, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 127, 255, 0)
 
+        edges = cv2.Canny(depth_image, 100, 200, L2gradient=True)
+
+        #ret, labels = cv2.connectedComponents(depth_image)
+        #components = get_labeled_img(labels)
+
+        #contours_img, contours, hierarchy = cv2.findContours(depth_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours_img, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        """
         good_contours = []
         for cnt in contours:
             if cv2.contourArea(cnt) > 50.0:
                 good_contours.append(cnt)
 
         contours_img = np.zeros((contours_img.shape[0], contours_img.shape[1], 3), np.uint8)
-
         if draw_contour == -1:
             for i in range(0, len(good_contours)):
                 M = cv2.moments(good_contours[i])
@@ -250,12 +260,15 @@ def canny_edge_detector():
                 blank_image = cv2.drawContours(contours_img, good_contours, i, clr, 3)
         else:
             blank_image = cv2.drawContours(contours_img, good_contours, draw_contour%len(good_contours), (0,125,0), 3)
+        """
 
         #image = cv2.drawContours(blank_image, good_contours, -1, (0,255,0), 1) # -1 means filled, > 0 is line thickness
 
+
+
         cv2.imshow("DepthImage", depth_image)
-        cv2.imshow("Edges", edges)
-        cv2.imshow("connected comps", components)
+        #cv2.imshow("Edges", edges)
+        #cv2.imshow("connected comps", components)
         cv2.imshow("contours", contours_img)
         cv2.imshow("thresholded", depth_thresh)
 
@@ -282,9 +295,57 @@ def canny_edge_detector():
     cv2.destroyAllWindows()
 
 
+def mser():
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    pipeline.start(config)
+
+    colorizer = rs.colorizer(0)
+
+    # Create MSER object
+    mser = cv2.MSER_create(_min_area=200, _max_area=100000)
+
+    alpha = 0.1
+    while True:
+        frames = pipeline.wait_for_frames()
+
+        depth_frame = colorizer.colorize(frames.get_depth_frame())
+        depth_image = np.asanyarray(depth_frame.get_data())
+
+        depth_thresh = cv2.threshold(depth_image, 50, 255, 1)[1]
+
+        depth_thresh = cv2.cvtColor(depth_thresh, cv2.COLOR_BGR2GRAY)
+        # detect regions in gray scale image
+        regions, _ = mser.detectRegions(depth_thresh)
+
+        hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
+
+        mask = np.zeros((depth_image.shape[0], depth_image.shape[1], 1), dtype=np.uint8)
+        cv2.polylines(mask, regions, 1, (255, 0, 0))
+
+        cv2.imshow("DepthImage", depth_image)
+        cv2.imshow("DepthThresh", depth_thresh)
+        cv2.imshow("mask", mask)
+
+        key = cv2.waitKey(1)
+
+        if key == ord("q"):
+            break
+        elif key == ord("+"):
+            alpha = min(alpha + 0.01, 1.0)
+        elif key == ord("-"):
+            alpha = max(alpha - 0.01, 0.01)
+
+    pipeline.stop()
+    cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
     #show_capture_feed()
     #selective_search("fast")
     #connected_components()
     #blob_detector()
-    canny_edge_detector()
+    #canny_edge_detector()
+    mser()
