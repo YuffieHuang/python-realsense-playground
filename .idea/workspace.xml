@@ -2,10 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="1dc2b6ab-ff3a-4953-89a8-cf501a9d3748" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/realsense_cam.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/video_server.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -15,11 +13,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="227" column="70" lean-forward="true" selection-start-line="227" selection-start-column="26" selection-end-line="227" selection-end-column="70" />
+            <state relative-caret-position="459">
+              <caret line="482" column="84" selection-start-line="482" selection-start-column="84" selection-end-line="482" selection-end-column="84" />
               <folding>
                 <element signature="e#0#25#0" expanded="true" />
               </folding>
@@ -31,7 +29,7 @@
         <entry file="file://$PROJECT_DIR$/realsense_cam.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="390">
-              <caret line="26" column="23" lean-forward="true" selection-start-line="26" selection-start-column="23" selection-end-line="26" selection-end-column="23" />
+              <caret line="28" column="29" selection-start-line="28" selection-start-column="29" selection-end-line="28" selection-end-column="29" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -39,11 +37,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/video_server.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="390">
-              <caret line="26" lean-forward="true" selection-start-line="26" selection-end-line="26" />
+            <state relative-caret-position="705">
+              <caret line="50" column="39" selection-start-line="50" selection-start-column="39" selection-end-line="50" selection-end-column="39" />
               <folding>
                 <element signature="e#0#50#0" expanded="true" />
               </folding>
@@ -71,17 +69,17 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/main.py" />
         <option value="$PROJECT_DIR$/realsense_cam.py" />
         <option value="$PROJECT_DIR$/video_server.py" />
+        <option value="$PROJECT_DIR$/main.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="539" />
-    <option name="y" value="78" />
-    <option name="width" value="700" />
-    <option name="height" value="500" />
+  <component name="ProjectFrameBounds" extendedState="4">
+    <option name="x" value="2048" />
+    <option name="y" value="-2" />
+    <option name="width" value="1720" />
+    <option name="height" value="1440" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -120,7 +118,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.video_server">
+  <component name="RunManager" selected="Python.main">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python">
       <module name="python-realsense-playground" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -182,15 +180,15 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="67" y="25" width="1853" height="1054" extended-state="6" />
+    <frame x="2048" y="-2" width="1720" height="1440" extended-state="4" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.18797815" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.20271067" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32948583" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.19891892" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.1983219" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -207,8 +205,8 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="227" column="70" lean-forward="true" selection-start-line="227" selection-start-column="26" selection-end-line="227" selection-end-column="70" />
+        <state relative-caret-position="459">
+          <caret line="482" column="84" selection-start-line="482" selection-start-column="84" selection-end-line="482" selection-end-column="84" />
           <folding>
             <element signature="e#0#25#0" expanded="true" />
           </folding>
@@ -218,7 +216,7 @@
     <entry file="file://$PROJECT_DIR$/realsense_cam.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="390">
-          <caret line="26" column="23" lean-forward="true" selection-start-line="26" selection-start-column="23" selection-end-line="26" selection-end-column="23" />
+          <caret line="28" column="29" selection-start-line="28" selection-start-column="29" selection-end-line="28" selection-end-column="29" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
@@ -227,8 +225,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/video_server.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="390">
-          <caret line="26" lean-forward="true" selection-start-line="26" selection-end-line="26" />
+        <state relative-caret-position="705">
+          <caret line="50" column="39" selection-start-line="50" selection-start-column="39" selection-end-line="50" selection-end-column="39" />
           <folding>
             <element signature="e#0#50#0" expanded="true" />
           </folding>

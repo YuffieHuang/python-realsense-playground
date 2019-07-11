@@ -342,10 +342,183 @@ def mser():
     cv2.destroyAllWindows()
 
 
+depth_frame = None
+color_frame = None
+
+
+def frame_align():
+    global depth_frame, color_frame
+
+    # Create a pipeline
+    pipeline = rs.pipeline()
+
+    # Create a config and configure the pipeline to stream
+    config = rs.config()
+
+    # This is the minimal recommended resolution for D435
+    config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 90)
+    config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
+
+    # Start streaming
+    profile = pipeline.start(config)
+
+    align_to = rs.stream.color
+    align = rs.align(align_to)
+
+    colorizer = rs.colorizer(0)
+
+    def hover_depth(event, x, y, flags, param):
+        global depth_frame, color_frame
+        if event == cv2.EVENT_MOUSEMOVE:
+            print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
+
+    depth_image_frame = "DepthImage"
+    color_image_frame = "ColorImage"
+    cv2.namedWindow(depth_image_frame)
+    cv2.namedWindow(color_image_frame)
+    cv2.setMouseCallback(depth_image_frame, hover_depth)
+    cv2.setMouseCallback(color_image_frame, hover_depth)
+
+    while True:
+        # Get frameset of color and depth
+        frames = pipeline.wait_for_frames()
+
+        # Align the depth frame to color frame
+        aligned_frames = align.process(frames)
+
+        depth_frame = aligned_frames.get_depth_frame()
+        color_frame = aligned_frames.get_color_frame()
+
+        depth_image = np.asanyarray(colorizer.colorize(depth_frame).get_data())
+        color_image = np.asanyarray(color_frame.get_data())
+
+        cv2.imshow("DepthImage", depth_image)
+        cv2.imshow("ColorImage", color_image)
+
+        key = cv2.waitKey(1)
+
+        if key == ord("q"):
+            break
+        elif key == ord("+"):
+            alpha = min(alpha + 0.01, 1.0)
+        elif key == ord("-"):
+            alpha = max(alpha - 0.01, 0.01)
+
+    pipeline.stop()
+    cv2.destroyAllWindows()
+
+
+def canny_2():
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    pipeline.start(config)
+
+    colorizer = rs.colorizer(2)
+
+    alpha = 0.1
+    run = True
+    depth_frame = None
+    draw_contour = -1
+    while True:
+        frames = pipeline.wait_for_frames()
+        if run:
+            depth_frame = colorizer.colorize(frames.get_depth_frame())
+
+        depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
+        depth_image = cv2.GaussianBlur(depth_image, (3, 3), cv2.BORDER_DEFAULT)
+
+        edges = cv2.Canny(depth_image, 100, 200, L2gradient=True)
+
+        cv2.imshow("DepthImage", depth_image)
+        cv2.imshow("Edges", edges)
+
+        key = cv2.waitKey(1)
+
+        if key == ord("q"):
+            break
+        elif key == ord("+"):
+            alpha = min(alpha + 0.01, 1.0)
+        elif key == ord("-"):
+            alpha = max(alpha - 0.01, 0.01)
+        elif key == ord("s"):
+            run = not run
+        elif key == ord("1"):
+            draw_contour = -1
+        elif key == ord("2"):
+            draw_contour = 0
+        elif key == ord("a") and draw_contour >= 0:
+            draw_contour = max(draw_contour - 1, 0)
+        elif key == ord("d") and draw_contour >= 0:
+            draw_contour += 1
+
+    pipeline.stop()
+    cv2.destroyAllWindows()
+
+
+def thresh_2():
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    pipeline.start(config)
+
+    colorizer = rs.colorizer(2)
+
+    alpha = 0.1
+    run = True
+    depth_frame = None
+    draw_contour = -1
+    while True:
+        frames = pipeline.wait_for_frames()
+        if run:
+            depth_frame = colorizer.colorize(frames.get_depth_frame())
+
+        depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
+        depth_image = cv2.GaussianBlur(depth_image, (3, 3), cv2.BORDER_DEFAULT)
+
+        ret, thresh = cv2.threshold(cv2.cvtColor(depth_image, cv2.COLOR_BGR2GRAY), 127, 255, 0)
+
+        im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # RETR_TREE to retrieve all contours
+        contours = [c for c in contours if cv2.contourArea(c) > 5000]
+        mask = np.zeros((depth_image.shape[0], depth_image.shape[1], 1), dtype=np.uint8)
+        cv2.drawContours(mask, contours, -1, (255, 255, 255), -1)
+
+        cv2.imshow("DepthImage", depth_image)
+        cv2.imshow("Thresh", thresh)
+        cv2.imshow("Regions", mask)
+
+        key = cv2.waitKey(1)
+
+        if key == ord("q"):
+            break
+        elif key == ord("+"):
+            alpha = min(alpha + 0.01, 1.0)
+        elif key == ord("-"):
+            alpha = max(alpha - 0.01, 0.01)
+        elif key == ord("s"):
+            run = not run
+        elif key == ord("1"):
+            draw_contour = -1
+        elif key == ord("2"):
+            draw_contour = 0
+        elif key == ord("a") and draw_contour >= 0:
+            draw_contour = max(draw_contour - 1, 0)
+        elif key == ord("d") and draw_contour >= 0:
+            draw_contour += 1
+
+    pipeline.stop()
+    cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
     #show_capture_feed()
     #selective_search("fast")
     #connected_components()
     #blob_detector()
     #canny_edge_detector()
-    mser()
+    #mser()
+    #frame_align()
+    #canny_2()
+    thresh_2()
