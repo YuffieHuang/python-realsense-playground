@@ -2,6 +2,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 
+
 def show_capture_feed():
     pipeline = rs.pipeline()
     config = rs.config()
@@ -457,6 +458,9 @@ def canny_2():
     cv2.destroyAllWindows()
 
 
+click_pos = [-1, -1]
+
+
 def thresh_2():
     pipeline = rs.pipeline()
     config = rs.config()
@@ -464,30 +468,81 @@ def thresh_2():
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     pipeline.start(config)
 
+    def click_line(event, x, y, flags, param):
+        global click_pos
+        if event == cv2.EVENT_LBUTTONDOWN:
+            click_pos = [x, y] #print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
+            print(click_pos)
+
+    color_image_frame = "ColorImage"
+    cv2.namedWindow(color_image_frame)
+    cv2.setMouseCallback(color_image_frame, click_line)
+
     colorizer = rs.colorizer(2)
+    align_to = rs.stream.color
+    align = rs.align(align_to)
 
     alpha = 0.1
     run = True
     depth_frame = None
+    color_frame = None
     draw_contour = -1
     while True:
         frames = pipeline.wait_for_frames()
         if run:
-            depth_frame = colorizer.colorize(frames.get_depth_frame())
+            # Align the depth frame to color frame
+            aligned_frames = align.process(frames)
+            depth_frame = colorizer.colorize(aligned_frames.get_depth_frame())
+            color_frame = aligned_frames.get_color_frame()
 
         depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
         depth_image = cv2.GaussianBlur(depth_image, (3, 3), cv2.BORDER_DEFAULT)
+        color_image = np.asanyarray(color_frame.get_data())
 
         ret, thresh = cv2.threshold(cv2.cvtColor(depth_image, cv2.COLOR_BGR2GRAY), 127, 255, 0)
 
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # RETR_TREE to retrieve all contours
         contours = [c for c in contours if cv2.contourArea(c) > 5000]
+
+        intensities = []
+        intensity_mean = []
+        max_mean = -1
+        min_dist_to_center = 1000000
+        dominant_contour = -1
+        img_cx = depth_image.shape[1] / 2.0
+        img_cy = depth_image.shape[0] / 2.0
+        for i in range(len(contours)):
+            cimg = np.zeros_like(depth_image)
+            cv2.drawContours(cimg, contours, i, color=255, thickness=-1)
+            pts = np.where(cimg == 255)
+            intensities.append(depth_image[pts[0], pts[1]])
+            intensity_mean.append(np.mean(intensities[i]))
+            if max_mean < intensity_mean[i]:
+                dominant_contour = i
+                max_mean = intensity_mean[i]
+
+            M = cv2.moments(contours[i])
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+            #print(cx, cy)
+            #print(img_cx, img_cy)
+            dist = np.linalg.norm([img_cx-cx, img_cy-cy])
+            #print(dist)
+        #print("MEANS:", intensity_mean)
+
         mask = np.zeros((depth_image.shape[0], depth_image.shape[1], 1), dtype=np.uint8)
-        cv2.drawContours(mask, contours, -1, (255, 255, 255), -1)
+        if dominant_contour >= 0:
+            cv2.drawContours(mask, contours, dominant_contour, color=255, thickness=-1)
+        else:
+            cv2.drawContours(mask, contours, -1, color=255, thickness=-1)
+
+        color_image = cv2.bitwise_and(color_image, color_image, mask=mask)
+        depth_image = cv2.bitwise_and(depth_image, depth_image, mask=mask)
 
         cv2.imshow("DepthImage", depth_image)
         cv2.imshow("Thresh", thresh)
         cv2.imshow("Regions", mask)
+        cv2.imshow(color_image_frame, color_image)
 
         key = cv2.waitKey(1)
 

@@ -16,8 +16,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="459">
-              <caret line="482" column="84" selection-start-line="482" selection-start-column="84" selection-end-line="482" selection-end-column="84" />
+            <state relative-caret-position="234">
+              <caret line="472" column="41" selection-start-line="472" selection-start-column="41" selection-end-line="472" selection-end-column="41" />
               <folding>
                 <element signature="e#0#25#0" expanded="true" />
               </folding>
@@ -77,7 +77,6 @@
   </component>
   <component name="ProjectFrameBounds" extendedState="4">
     <option name="x" value="2048" />
-    <option name="y" value="-2" />
     <option name="width" value="1720" />
     <option name="height" value="1440" />
   </component>
@@ -180,7 +179,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="2048" y="-2" width="1720" height="1440" extended-state="4" />
+    <frame x="2048" y="0" width="1720" height="1440" extended-state="4" />
     <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.20271067" />
@@ -205,8 +204,8 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="459">
-          <caret line="482" column="84" selection-start-line="482" selection-start-column="84" selection-end-line="482" selection-end-column="84" />
+        <state relative-caret-position="234">
+          <caret line="472" column="41" selection-start-line="472" selection-start-column="41" selection-end-line="472" selection-end-column="41" />
           <folding>
             <element signature="e#0#25#0" expanded="true" />
           </folding>
