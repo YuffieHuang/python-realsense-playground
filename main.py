@@ -464,6 +464,7 @@ crop_mask = None
 
 def thresh_2():
     from foreground_roi_detector import ForegroundRoiDetector
+    from depth_roi_evaluator import DepthRoiEvaluator
 
     pipeline = rs.pipeline()
     config = rs.config()
@@ -492,13 +493,14 @@ def thresh_2():
     color_frame = None
     draw_contour = -1
     roi_detector = ForegroundRoiDetector()
+    roi_evaluator = DepthRoiEvaluator()
     while True:
-        frames = pipeline.wait_for_frames()
         if run:
+            frames = pipeline.wait_for_frames()
             # Align the depth frame to color frame
-            aligned_frames = align.process(frames)
-            depth_frame = colorizer.colorize(aligned_frames.get_depth_frame())
-            color_frame = aligned_frames.get_color_frame()
+            frames = align.process(frames)
+            depth_frame = colorizer.colorize(frames.get_depth_frame())
+            color_frame = frames.get_color_frame()
 
         depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
         color_image = np.asanyarray(color_frame.get_data())
@@ -511,7 +513,19 @@ def thresh_2():
         color_image = cv2.bitwise_and(color_image, color_image, mask=foreground_mask)
         depth_image = cv2.bitwise_and(depth_image, depth_image, mask=foreground_mask)
 
-        cv2.drawContours(color_image, [foreground_contour], 0, color=(0, 255, 0), thickness=2)
+        if foreground_contour is not None:
+            center_of_mass = roi_evaluator.calc_center_of_mass(foreground_contour)
+            line = roi_evaluator.calc_vertical_line(foreground_contour, center_of_mass[0])
+            cv2.line(color_image, line[0], line[1], color=(0, 0, 255), thickness=2)
+            cv2.drawContours(color_image, [foreground_contour], 0, color=(0, 255, 0), thickness=2)
+            p_start = roi_evaluator.calc_world_pos(line[0][0], line[0][1], frames.get_depth_frame())
+            h = line[1][1] - line[0][1]
+            p_end = roi_evaluator.calc_world_pos(line[1][0], line[0][1]+int(h/2.0), frames.get_depth_frame())
+            #print(p_start, p_end)
+            if p_start is not None and p_end is not None:
+                cv2.circle(color_image, (line[1][0], line[0][1]+int(h/2.0)), radius=10, color=(255, 0, 0), thickness=-1)
+                diff = np.linalg.norm(np.array(p_end) - np.array(p_start))
+                print("p_start", p_start, "p_end", p_end, "diff", diff)
 
         cv2.imshow("ForegroundMask", foreground_mask)
         cv2.imshow("DepthImage", depth_image)
