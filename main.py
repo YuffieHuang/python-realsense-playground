@@ -459,9 +459,12 @@ def canny_2():
 
 
 click_pos = [-1, -1]
+crop_mask = None
 
 
 def thresh_2():
+    from foreground_roi_detector import ForegroundRoiDetector
+
     pipeline = rs.pipeline()
     config = rs.config()
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
@@ -469,10 +472,11 @@ def thresh_2():
     pipeline.start(config)
 
     def click_line(event, x, y, flags, param):
-        global click_pos
+        global crop_mask, depth_frame
         if event == cv2.EVENT_LBUTTONDOWN:
-            click_pos = [x, y] #print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
-            print(click_pos)
+            crop_mask = np.zeros_like(foreground_mask)
+            cv2.rectangle(crop_mask, (depth_image.shape[1] - 1, y), (0, 0),
+                          color=255, thickness=-1)
 
     color_image_frame = "ColorImage"
     cv2.namedWindow(color_image_frame)
@@ -487,6 +491,7 @@ def thresh_2():
     depth_frame = None
     color_frame = None
     draw_contour = -1
+    roi_detector = ForegroundRoiDetector()
     while True:
         frames = pipeline.wait_for_frames()
         if run:
@@ -496,52 +501,20 @@ def thresh_2():
             color_frame = aligned_frames.get_color_frame()
 
         depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
-        depth_image = cv2.GaussianBlur(depth_image, (3, 3), cv2.BORDER_DEFAULT)
         color_image = np.asanyarray(color_frame.get_data())
 
-        ret, thresh = cv2.threshold(cv2.cvtColor(depth_image, cv2.COLOR_BGR2GRAY), 127, 255, 0)
+        foreground_mask, foreground_contour = roi_detector.detect(depth_image=depth_image)
+        if crop_mask is not None:
+            cv2.imshow("CropMask", crop_mask)
+            foreground_mask, foreground_contour = roi_detector.refine(foreground_mask, crop_mask, depth_image)
 
-        im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # RETR_TREE to retrieve all contours
-        contours = [c for c in contours if cv2.contourArea(c) > 5000]
+        color_image = cv2.bitwise_and(color_image, color_image, mask=foreground_mask)
+        depth_image = cv2.bitwise_and(depth_image, depth_image, mask=foreground_mask)
 
-        intensities = []
-        intensity_mean = []
-        max_mean = -1
-        min_dist_to_center = 1000000
-        dominant_contour = -1
-        img_cx = depth_image.shape[1] / 2.0
-        img_cy = depth_image.shape[0] / 2.0
-        for i in range(len(contours)):
-            cimg = np.zeros_like(depth_image)
-            cv2.drawContours(cimg, contours, i, color=255, thickness=-1)
-            pts = np.where(cimg == 255)
-            intensities.append(depth_image[pts[0], pts[1]])
-            intensity_mean.append(np.mean(intensities[i]))
-            if max_mean < intensity_mean[i]:
-                dominant_contour = i
-                max_mean = intensity_mean[i]
+        cv2.drawContours(color_image, [foreground_contour], 0, color=(0, 255, 0), thickness=2)
 
-            M = cv2.moments(contours[i])
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
-            #print(cx, cy)
-            #print(img_cx, img_cy)
-            dist = np.linalg.norm([img_cx-cx, img_cy-cy])
-            #print(dist)
-        #print("MEANS:", intensity_mean)
-
-        mask = np.zeros((depth_image.shape[0], depth_image.shape[1], 1), dtype=np.uint8)
-        if dominant_contour >= 0:
-            cv2.drawContours(mask, contours, dominant_contour, color=255, thickness=-1)
-        else:
-            cv2.drawContours(mask, contours, -1, color=255, thickness=-1)
-
-        color_image = cv2.bitwise_and(color_image, color_image, mask=mask)
-        depth_image = cv2.bitwise_and(depth_image, depth_image, mask=mask)
-
+        cv2.imshow("ForegroundMask", foreground_mask)
         cv2.imshow("DepthImage", depth_image)
-        cv2.imshow("Thresh", thresh)
-        cv2.imshow("Regions", mask)
         cv2.imshow(color_image_frame, color_image)
 
         key = cv2.waitKey(1)
