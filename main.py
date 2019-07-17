@@ -499,6 +499,7 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
     draw_contour = -1
     roi_detector = ForegroundRoiDetector()
     roi_evaluator = DepthRoiEvaluator()
+    frames = None
     while True:
         if run:
             frames = pipeline.wait_for_frames()
@@ -507,86 +508,28 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
             depth_frame = frames.get_depth_frame()
             color_frame = frames.get_color_frame()
 
+        # extract depth and color images
         depth_image = cv2.convertScaleAbs(np.asanyarray(colorizer.colorize(depth_frame).get_data()), alpha=1.0)
         color_image = np.asanyarray(color_frame.get_data())
 
+        # detect region of interest
         foreground_mask, foreground_contour = roi_detector.detect(depth_image=depth_image)
         if crop_mask is not None:
             cv2.imshow("CropMask", crop_mask)
             foreground_mask, foreground_contour = roi_detector.refine(foreground_mask, crop_mask, depth_image)
 
+        # mask source images based on ROI
         color_image = cv2.bitwise_and(color_image, color_image, mask=foreground_mask)
         depth_image = cv2.bitwise_and(depth_image, depth_image, mask=foreground_mask)
 
-        if foreground_contour is not None:
-            center_of_mass = roi_evaluator.calc_center_of_mass(foreground_contour)
-            line = roi_evaluator.calc_vertical_line(foreground_contour, center_of_mass[0])
+        # measure ROI diameter @ measurement height
+        diameter = roi_evaluator.calc_diameter(foreground_contour, foreground_mask,
+                                               frames.get_depth_frame(),
+                                               measurement_height=measurement_height,
+                                               debug_img=color_image)
+        print("diameter", diameter)
 
-            cv2.line(color_image, line[0], line[1], color=(0, 0, 255), thickness=2)
-            cv2.drawContours(color_image, [foreground_contour], 0, color=(0, 255, 0), thickness=2)
-
-            p_start, depth_start = roi_evaluator.calc_world_pos(line[1][0], line[1][1], frames.get_depth_frame())
-            h = line[1][1] - line[0][1]
-
-            sample_step = 1
-            offset = 0
-            pixel_end = None
-            p_end = None
-            p_end_fitness = -100000
-            # find height line
-            while offset < h:
-                offset += sample_step
-                end_candidate, depth_end = roi_evaluator.calc_world_pos(line[1][0], line[1][1]-offset,
-                                                                        frames.get_depth_frame())
-                dir_vec = np.array(end_candidate) - np.array(p_start)
-                diff = np.linalg.norm(dir_vec)
-                fitness = 1 - abs(measurement_height - diff)
-                if fitness > p_end_fitness:
-                    p_end = end_candidate
-                    p_end_fitness = fitness
-                    pixel_end = (line[1][0], line[1][1]-offset)
-
-            padding = 2
-            pixel_left = None
-            pixel_right = None
-            # find diameter line
-            if p_start is not None and p_end is not None:
-                cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
-                # find left diameter pixel
-                offset = 0
-                while True:
-                    offset += sample_step
-                    curr_pixel = (pixel_end[0]-offset, pixel_end[1])
-                    stop = curr_pixel[0] < 0 or curr_pixel[0] >= foreground_mask.shape[1] or \
-                           foreground_mask[curr_pixel[1], curr_pixel[0]] == 0
-                    if stop:
-                        pixel_left = (pixel_left[0]+padding, pixel_left[1])
-                        break
-                    pixel_left = curr_pixel
-                # find right diameter pixel
-                offset = 0
-                while True:
-                    offset += sample_step
-                    curr_pixel = (pixel_end[0]+offset, pixel_end[1])
-                    stop = curr_pixel[0] < 0 or curr_pixel[0] >= foreground_mask.shape[1] or \
-                           foreground_mask[curr_pixel[1], curr_pixel[0]] == 0
-                    if stop:
-                        pixel_right = (pixel_right[0]-padding, pixel_right[1])
-                        break
-                    pixel_right = curr_pixel
-
-            if pixel_left is not None and pixel_right is not None:
-                p_left, depth_left = roi_evaluator.calc_world_pos(pixel_left[0], pixel_left[1],
-                                                                  frames.get_depth_frame(),
-                                                                  tolerance_radius=0)
-                p_right, depth_right = roi_evaluator.calc_world_pos(pixel_right[0], pixel_right[1],
-                                                                    frames.get_depth_frame(),
-                                                                    tolerance_radius=0)
-                dir_vec = np.array(p_right) - np.array(p_left)
-                diameter = np.linalg.norm(dir_vec)
-                print("depth_left", depth_left, "depth_right", depth_right, "diameter", diameter)
-                cv2.line(color_image, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
-
+        # visualize result
         cv2.imshow("ForegroundMask", foreground_mask)
         cv2.imshow("DepthImage", depth_image)
         cv2.imshow(color_image_frame, color_image)
