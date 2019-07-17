@@ -26,23 +26,22 @@ class DepthRoiEvaluator(object):
     @staticmethod
     def calc_world_pos(x, y, depth_frame, tolerance_radius=5):
         depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
-        depth_candidates = []
-        for x_i in range(-tolerance_radius, tolerance_radius):
-            for y_i in range(-tolerance_radius, tolerance_radius):
-                depth = depth_frame.get_distance(x+x_i, y+y_i)
-                if depth < 10.0:
-                    depth_candidates.append(depth)
-        if len(depth_candidates) == 0:
-            return None
-        #print("candidates prior to filtering (len(", len(depth_candidates), ")")
-        #pprint(depth_candidates)
-        depth_candidates = np.array(depth_candidates)
-        # reject outliers
-        m = 2
-        depth_candidates = depth_candidates[
-            abs(depth_candidates - np.mean(depth_candidates)) < m * np.std(depth_candidates)]
-        #print("candidates after filtering (len(", len(depth_candidates), ")")
-        #pprint(depth_candidates)
-        depth = np.mean(depth_candidates)
-        #print("resulting depth", depth)
+        depth = 0
+        if tolerance_radius > 0:
+            depth_candidates = []
+            for x_i in range(-tolerance_radius, tolerance_radius):
+                for y_i in range(-tolerance_radius, tolerance_radius):
+                    depth = depth_frame.get_distance(x+x_i, y+y_i)
+                    if depth < 10.0:
+                        depth_candidates.append(depth)
+            if len(depth_candidates) == 0:
+                return None
+            depth_candidates = np.array(depth_candidates)
+            # reject outliers
+            m = 2
+            depth_candidates = depth_candidates[
+                abs(depth_candidates - np.mean(depth_candidates)) < m * np.std(depth_candidates)]
+            depth = np.mean(depth_candidates)
+        else:
+            depth = depth_frame.get_distance(x, y)
         return rs.rs2_deproject_pixel_to_point(depth_intrin, [x, y], depth), depth

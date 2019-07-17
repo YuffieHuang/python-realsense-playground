@@ -464,7 +464,7 @@ depth_start = 10
 depth_end = 10
 
 
-def foreground_roi_depth_evaluation():
+def foreground_roi_depth_evaluation(measurement_height=0.125):
     global depth_frame, crop_mask, depth_start, depth_end
     from foreground_roi_detector import ForegroundRoiDetector
     from depth_roi_evaluator import DepthRoiEvaluator
@@ -530,29 +530,65 @@ def foreground_roi_depth_evaluation():
             p_start, depth_start = roi_evaluator.calc_world_pos(line[1][0], line[1][1], frames.get_depth_frame())
             h = line[1][1] - line[0][1]
 
-            chest_height = 0.125
             sample_step = 1
             offset = 0
             pixel_end = None
             p_end = None
             p_end_fitness = -100000
+            # find height line
             while offset < h:
                 offset += sample_step
                 end_candidate, depth_end = roi_evaluator.calc_world_pos(line[1][0], line[1][1]-offset,
                                                                         frames.get_depth_frame())
                 dir_vec = np.array(end_candidate) - np.array(p_start)
                 diff = np.linalg.norm(dir_vec)
-                fitness = 1 - abs(chest_height - diff)
+                fitness = 1 - abs(measurement_height - diff)
                 if fitness > p_end_fitness:
                     p_end = end_candidate
                     p_end_fitness = fitness
                     pixel_end = (line[1][0], line[1][1]-offset)
 
+            pixel_left = None
+            pixel_right = None
+            # find diameter line
             if p_start is not None and p_end is not None:
                 cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
                 dir_vec = np.array(p_end) - np.array(p_start)
                 diff = np.linalg.norm(dir_vec)
-                print("p_start", p_start, "p_end", p_end, "diff", diff)
+                # find left diameter pixel
+                stop = False
+                offset = 0
+                while True:
+                    offset += sample_step
+                    curr_pixel = (pixel_end[0]-offset, pixel_end[1])
+                    stop = curr_pixel[0] < 0 or curr_pixel[0] >= foreground_mask.shape[1] or \
+                           foreground_mask[curr_pixel[1], curr_pixel[0]] == 0
+                    if stop:
+                        break
+                    pixel_left = curr_pixel
+                # find right diameter pixel
+                stop = False
+                offset = 0
+                while True:
+                    offset += sample_step
+                    curr_pixel = (pixel_end[0] + offset, pixel_end[1])
+                    stop = curr_pixel[0] < 0 or curr_pixel[0] >= foreground_mask.shape[1] or \
+                           foreground_mask[curr_pixel[1], curr_pixel[0]] == 0
+                    if stop:
+                        break
+                    pixel_right = curr_pixel
+
+            if pixel_left is not None and pixel_right is not None:
+                p_left, depth_left = roi_evaluator.calc_world_pos(pixel_left[0], pixel_left[1],
+                                                                  frames.get_depth_frame(),
+                                                                  tolerance_radius=0)
+                p_right, depth_right = roi_evaluator.calc_world_pos(pixel_right[0], pixel_right[1],
+                                                                    frames.get_depth_frame(),
+                                                                    tolerance_radius=0)
+                dir_vec = np.array(p_right) - np.array(p_left)
+                diameter = np.linalg.norm(dir_vec)
+                print("depth_left", depth_left, "depth_right", depth_right, "diameter", diameter)
+                cv2.line(color_image, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
 
         cv2.imshow("ForegroundMask", foreground_mask)
         cv2.imshow("DepthImage", depth_image)
@@ -590,4 +626,4 @@ if __name__ == "__main__":
     #mser()
     #frame_align()
     #canny_2()
-    foreground_roi_depth_evaluation()
+    foreground_roi_depth_evaluation(measurement_height=0.125)
