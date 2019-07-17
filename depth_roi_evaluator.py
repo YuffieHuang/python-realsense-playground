@@ -1,7 +1,6 @@
 import numpy as np
 import cv2
 import pyrealsense2 as rs
-from pprint import pprint
 
 
 class DepthRoiEvaluator(object):

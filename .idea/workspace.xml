@@ -18,8 +18,8 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/main.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="565">
-                  <caret line="588" column="50" lean-forward="true" selection-start-line="588" selection-start-column="50" selection-end-line="588" selection-end-column="50" />
+                <state relative-caret-position="190">
+                  <caret line="484" column="81" selection-start-line="484" selection-start-column="81" selection-end-line="484" selection-end-column="81" />
                   <folding>
                     <element signature="e#0#25#0" expanded="true" />
                   </folding>
@@ -30,8 +30,8 @@
           <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/depth_roi_evaluator.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="565">
-                  <caret line="45" column="50" selection-start-line="45" selection-start-column="50" selection-end-line="45" selection-end-column="50" />
+                <state relative-caret-position="445">
+                  <caret line="36" column="27" lean-forward="true" selection-start-line="36" selection-start-column="27" selection-end-line="36" selection-end-column="27" />
                   <folding>
                     <element signature="e#0#18#0" expanded="true" />
                   </folding>
@@ -42,8 +42,8 @@
           <file pinned="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/foreground_roi_detector.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="550">
-                  <caret line="92" column="93" selection-start-line="92" selection-start-column="93" selection-end-line="92" selection-end-column="93" />
+                <state relative-caret-position="490">
+                  <caret line="88" column="30" lean-forward="true" selection-start-line="88" selection-start-column="30" selection-end-line="88" selection-end-column="30" />
                   <folding>
                     <element signature="e#0#10#0" expanded="true" />
                   </folding>
@@ -82,8 +82,8 @@
           <file pinned="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/main.py">
               <provider selected="true" editor-type-id="text-editor">
-                <state relative-caret-position="333">
-                  <caret line="517" column="12" lean-forward="true" selection-start-line="516" selection-start-column="12" selection-end-line="517" selection-end-column="12" />
+                <state relative-caret-position="438">
+                  <caret line="522" column="90" lean-forward="true" selection-start-line="522" selection-start-column="90" selection-end-line="522" selection-end-column="90" />
                   <folding>
                     <element signature="e#0#25#0" expanded="true" />
                   </folding>
@@ -271,8 +271,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/foreground_roi_detector.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="550">
-          <caret line="92" column="93" selection-start-line="92" selection-start-column="93" selection-end-line="92" selection-end-column="93" />
+        <state relative-caret-position="490">
+          <caret line="88" column="30" lean-forward="true" selection-start-line="88" selection-start-column="30" selection-end-line="88" selection-end-column="30" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
@@ -281,8 +281,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/depth_roi_evaluator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="565">
-          <caret line="45" column="50" selection-start-line="45" selection-start-column="50" selection-end-line="45" selection-end-column="50" />
+        <state relative-caret-position="445">
+          <caret line="36" column="27" lean-forward="true" selection-start-line="36" selection-start-column="27" selection-end-line="36" selection-end-column="27" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
@@ -291,8 +291,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="565">
-          <caret line="588" column="50" lean-forward="true" selection-start-line="588" selection-start-column="50" selection-end-line="588" selection-end-column="50" />
+        <state relative-caret-position="190">
+          <caret line="484" column="81" selection-start-line="484" selection-start-column="81" selection-end-line="484" selection-end-column="81" />
           <folding>
             <element signature="e#0#25#0" expanded="true" />
           </folding>

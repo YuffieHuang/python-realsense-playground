@@ -483,8 +483,6 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
                           color=255, thickness=-1)
         if event == cv2.EVENT_MOUSEMOVE:
             print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
-            print("depth_end", depth_end)
-            print("depth_start", depth_start)
 
     color_image_frame = "ColorImage"
     cv2.namedWindow(color_image_frame)
@@ -548,15 +546,13 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
                     p_end_fitness = fitness
                     pixel_end = (line[1][0], line[1][1]-offset)
 
+            padding = 2
             pixel_left = None
             pixel_right = None
             # find diameter line
             if p_start is not None and p_end is not None:
                 cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
-                dir_vec = np.array(p_end) - np.array(p_start)
-                diff = np.linalg.norm(dir_vec)
                 # find left diameter pixel
-                stop = False
                 offset = 0
                 while True:
                     offset += sample_step
@@ -564,17 +560,18 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
                     stop = curr_pixel[0] < 0 or curr_pixel[0] >= foreground_mask.shape[1] or \
                            foreground_mask[curr_pixel[1], curr_pixel[0]] == 0
                     if stop:
+                        pixel_left = (pixel_left[0]+padding, pixel_left[1])
                         break
                     pixel_left = curr_pixel
                 # find right diameter pixel
-                stop = False
                 offset = 0
                 while True:
                     offset += sample_step
-                    curr_pixel = (pixel_end[0] + offset, pixel_end[1])
+                    curr_pixel = (pixel_end[0]+offset, pixel_end[1])
                     stop = curr_pixel[0] < 0 or curr_pixel[0] >= foreground_mask.shape[1] or \
                            foreground_mask[curr_pixel[1], curr_pixel[0]] == 0
                     if stop:
+                        pixel_right = (pixel_right[0]-padding, pixel_right[1])
                         break
                     pixel_right = curr_pixel
 
