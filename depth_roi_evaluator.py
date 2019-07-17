@@ -3,6 +3,7 @@ import cv2
 import pyrealsense2 as rs
 from pprint import pprint
 
+
 class DepthRoiEvaluator(object):
     def __init__(self):
         pass
@@ -33,15 +34,15 @@ class DepthRoiEvaluator(object):
                     depth_candidates.append(depth)
         if len(depth_candidates) == 0:
             return None
-        print("candidates prior to filtering (len(", len(depth_candidates), ")")
-        pprint(depth_candidates)
+        #print("candidates prior to filtering (len(", len(depth_candidates), ")")
+        #pprint(depth_candidates)
         depth_candidates = np.array(depth_candidates)
         # reject outliers
         m = 2
         depth_candidates = depth_candidates[
             abs(depth_candidates - np.mean(depth_candidates)) < m * np.std(depth_candidates)]
-        print("candidates after filtering (len(", len(depth_candidates), ")")
-        pprint(depth_candidates)
+        #print("candidates after filtering (len(", len(depth_candidates), ")")
+        #pprint(depth_candidates)
         depth = np.mean(depth_candidates)
-        print("resulting depth", depth)
-        return rs.rs2_deproject_pixel_to_point(depth_intrin, [x, y], depth)
+        #print("resulting depth", depth)
+        return rs.rs2_deproject_pixel_to_point(depth_intrin, [x, y], depth), depth

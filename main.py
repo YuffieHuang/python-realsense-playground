@@ -460,9 +460,12 @@ def canny_2():
 
 click_pos = [-1, -1]
 crop_mask = None
+depth_start = 10
+depth_end = 10
 
 
-def thresh_2():
+def foreground_roi_depth_evaluation():
+    global depth_frame, crop_mask, depth_start, depth_end
     from foreground_roi_detector import ForegroundRoiDetector
     from depth_roi_evaluator import DepthRoiEvaluator
 
@@ -478,6 +481,10 @@ def thresh_2():
             crop_mask = np.zeros_like(foreground_mask)
             cv2.rectangle(crop_mask, (depth_image.shape[1] - 1, y), (0, 0),
                           color=255, thickness=-1)
+        if event == cv2.EVENT_MOUSEMOVE:
+            print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
+            print("depth_end", depth_end)
+            print("depth_start", depth_start)
 
     color_image_frame = "ColorImage"
     cv2.namedWindow(color_image_frame)
@@ -499,10 +506,10 @@ def thresh_2():
             frames = pipeline.wait_for_frames()
             # Align the depth frame to color frame
             frames = align.process(frames)
-            depth_frame = colorizer.colorize(frames.get_depth_frame())
+            depth_frame = frames.get_depth_frame()
             color_frame = frames.get_color_frame()
 
-        depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
+        depth_image = cv2.convertScaleAbs(np.asanyarray(colorizer.colorize(depth_frame).get_data()), alpha=1.0)
         color_image = np.asanyarray(color_frame.get_data())
 
         foreground_mask, foreground_contour = roi_detector.detect(depth_image=depth_image)
@@ -516,15 +523,35 @@ def thresh_2():
         if foreground_contour is not None:
             center_of_mass = roi_evaluator.calc_center_of_mass(foreground_contour)
             line = roi_evaluator.calc_vertical_line(foreground_contour, center_of_mass[0])
+
             cv2.line(color_image, line[0], line[1], color=(0, 0, 255), thickness=2)
             cv2.drawContours(color_image, [foreground_contour], 0, color=(0, 255, 0), thickness=2)
-            p_start = roi_evaluator.calc_world_pos(line[0][0], line[0][1], frames.get_depth_frame())
+
+            p_start, depth_start = roi_evaluator.calc_world_pos(line[1][0], line[1][1], frames.get_depth_frame())
             h = line[1][1] - line[0][1]
-            p_end = roi_evaluator.calc_world_pos(line[1][0], line[0][1]+int(h/2.0), frames.get_depth_frame())
-            #print(p_start, p_end)
+
+            chest_height = 0.125
+            sample_step = 1
+            offset = 0
+            pixel_end = None
+            p_end = None
+            p_end_fitness = -100000
+            while offset < h:
+                offset += sample_step
+                end_candidate, depth_end = roi_evaluator.calc_world_pos(line[1][0], line[1][1]-offset,
+                                                                        frames.get_depth_frame())
+                dir_vec = np.array(end_candidate) - np.array(p_start)
+                diff = np.linalg.norm(dir_vec)
+                fitness = 1 - abs(chest_height - diff)
+                if fitness > p_end_fitness:
+                    p_end = end_candidate
+                    p_end_fitness = fitness
+                    pixel_end = (line[1][0], line[1][1]-offset)
+
             if p_start is not None and p_end is not None:
-                cv2.circle(color_image, (line[1][0], line[0][1]+int(h/2.0)), radius=10, color=(255, 0, 0), thickness=-1)
-                diff = np.linalg.norm(np.array(p_end) - np.array(p_start))
+                cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
+                dir_vec = np.array(p_end) - np.array(p_start)
+                diff = np.linalg.norm(dir_vec)
                 print("p_start", p_start, "p_end", p_end, "diff", diff)
 
         cv2.imshow("ForegroundMask", foreground_mask)
@@ -563,4 +590,4 @@ if __name__ == "__main__":
     #mser()
     #frame_align()
     #canny_2()
-    thresh_2()
+    foreground_roi_depth_evaluation()
