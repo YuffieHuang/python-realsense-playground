@@ -16,6 +16,10 @@ class DepthRoiEvaluator(object):
         return [np.mean(c_x), np.mean(c_y)]
 
     @staticmethod
+    def is_in_bounds(x, y, frame):
+        return not(x < 0 or x >= frame.width) and not(y < 0 or y >= frame.height)
+
+    @staticmethod
     def calc_vertical_line(contour, x):
         _x, y, _w, h = cv2.boundingRect(contour)
         p1 = (int(x), y)
@@ -30,7 +34,11 @@ class DepthRoiEvaluator(object):
             depth_candidates = []
             for x_i in range(-tolerance_radius, tolerance_radius):
                 for y_i in range(-tolerance_radius, tolerance_radius):
-                    depth = depth_frame.get_distance(x+x_i, y+y_i)
+                    x_t = x+x_i
+                    y_t = y+y_i
+                    if not DepthRoiEvaluator.is_in_bounds(x_t, y_t, depth_frame):
+                        continue
+                    depth = depth_frame.get_distance(x_t, y_t)
                     if depth < 10.0:
                         depth_candidates.append(depth)
             if len(depth_candidates) == 0:
@@ -125,4 +133,5 @@ class DepthRoiEvaluator(object):
 
             if debug_img is not None:
                 cv2.line(debug_img, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
+
         return diameter

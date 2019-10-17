@@ -531,7 +531,6 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
 
         # visualize result
         cv2.imshow("ForegroundMask", foreground_mask)
-        cv2.imshow("DepthImage", depth_image)
         cv2.imshow(color_image_frame, color_image)
 
         key = cv2.waitKey(1)
@@ -556,6 +555,47 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
     pipeline.stop()
     cv2.destroyAllWindows()
 
+
+class RangeIndexMapping:
+    def __init__(self, ranges=[]):
+        self.ranges = ranges
+        if len(self.ranges) == 0:
+            self.ranges = [(7, 10), (10, 15), (15, 20)]
+
+    def get_range_index(self, i):
+        range_index = 0
+        for r in self.ranges:
+            if i in range(r[0], r[1]+1):
+                return range_index
+            range_index += 1
+        return -1
+
+
+class RangeIndexMatrix:
+    def __init__(self, x_mapping=RangeIndexMapping(), y_mapping=RangeIndexMapping()):
+        self.values = [[-1.0 for y_range in y_mapping.ranges] for x_range in x_mapping.ranges]
+        self.x_mapping = x_mapping
+        self.y_mapping = y_mapping
+
+    def get_value(self, x_value, y_value):
+        x_idx = self.x_mapping.get_range_index(x_value)
+        y_idx = self.y_mapping.get_range_index(y_value)
+        if x_idx != -1 and y_idx != -1:
+            return self.values[x_idx][y_idx]
+
+
+class Kiefer(RangeIndexMatrix):
+    def __init__(self):
+        super().__init__(
+            x_mapping=RangeIndexMapping(ranges=[(7, 10), (10, 15), (15, 20), (20, 25), (25, 30), (30, 35)]), # heightclass
+            y_mapping=RangeIndexMapping(ranges=[(0, 10), (10, 20), (20, 25), (30, 35), (40, 45), (50, 55), (60, 65), (65, 70)]) # diameter
+        )
+        self.values[0][0] = 0.34
+        self.values[0][1] = 0.48
+        self.values[1][1] = 0.45
+
+    def get_formzahl(self, height_class, diameter):
+        self.get_value(height_class, diameter)
 
 if __name__ == "__main__":
     #show_capture_feed()
