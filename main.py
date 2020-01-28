@@ -519,19 +519,26 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
             foreground_mask, foreground_contour = roi_detector.refine(foreground_mask, crop_mask, depth_image)
 
         # mask source images based on ROI
-        color_image = cv2.bitwise_and(color_image, color_image, mask=foreground_mask)
+        original_color = color_image.copy()
+        original_depth = depth_image.copy()
+        #color_image = cv2.bitwise_and(color_image, color_image, mask=foreground_mask)
         depth_image = cv2.bitwise_and(depth_image, depth_image, mask=foreground_mask)
 
         # measure ROI diameter @ measurement height
-        diameter = roi_evaluator.calc_diameter(foreground_contour, foreground_mask,
-                                               frames.get_depth_frame(),
-                                               measurement_height=measurement_height,
-                                               debug_img=color_image)
-        print("diameter", diameter)
+        try:
+            diameter = roi_evaluator.calc_diameter(foreground_contour, foreground_mask,
+                                                   frames.get_depth_frame(),
+                                                   measurement_height=measurement_height,
+                                                   debug_img=color_image)
+        except Exception as e:
+            pass
+        #print("diameter", diameter)
 
         # visualize result
         cv2.imshow("ForegroundMask", foreground_mask)
         cv2.imshow(color_image_frame, color_image)
+        #cv2.imshow("Original Color", original_color)
+        cv2.imshow("Original Depth", original_depth)
 
         key = cv2.waitKey(1)
 
@@ -606,4 +613,4 @@ if __name__ == "__main__":
     #mser()
     #frame_align()
     #canny_2()
-    foreground_roi_depth_evaluation(measurement_height=0.125)
+    foreground_roi_depth_evaluation(measurement_height=1.3)

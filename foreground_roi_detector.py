@@ -88,6 +88,7 @@ class ForegroundRoiDetector(object):
             depth_image = cv2.GaussianBlur(depth_image, (3, 3), cv2.BORDER_DEFAULT)
         # calc binarized image
         ret, thresh = cv2.threshold(cv2.cvtColor(depth_image, cv2.COLOR_BGR2GRAY), 127, 255, 0)
+        cv2.imshow("Initial Thresh", thresh)
         # compute contours (include only root regions)
         # RETR_TREE to retrieve all contours
         im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
