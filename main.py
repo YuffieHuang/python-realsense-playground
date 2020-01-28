@@ -563,6 +563,176 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
     cv2.destroyAllWindows()
 
 
+magnitude = None
+t_line = None
+
+def gradient_intensity_evaluation(measurement_height=0.125):
+    global depth_frame, crop_mask, depth_start, depth_end, magnitude, t_line
+    from depth_roi_evaluator import DepthRoiEvaluator
+
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    pipeline.start(config)
+
+    def click_line(event, x, y, flags, param):
+        global crop_mask, depth_frame, magnitude, t_line
+        if event == cv2.EVENT_LBUTTONDOWN:
+            t_line = y
+        if event == cv2.EVENT_MOUSEMOVE:
+            pass
+            #print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
+            #print("magnitude at[", x, ",", y, "]", magnitude[y, x, 0])
+
+    color_image_frame = "ColorImage"
+    depth_image_frame = "DepthImage"
+    depth_gradient_image_frame = "GradientImage"
+    threshold_image_frame = "ThresholdImage"
+    cv2.namedWindow(color_image_frame)
+    cv2.namedWindow(color_image_frame)
+    cv2.setMouseCallback(color_image_frame, click_line)
+
+    colorizer = rs.colorizer(2)
+    align_to = rs.stream.color
+    align = rs.align(align_to)
+
+    run = True
+    depth_frame = None
+    color_frame = None
+    frames = None
+
+    while True:
+        if run:
+            frames = pipeline.wait_for_frames()
+            # Align the depth frame to color frame
+            frames = align.process(frames)
+            depth_frame = frames.get_depth_frame()
+            color_frame = frames.get_color_frame()
+
+        # extract depth and color images
+        depth_image = cv2.convertScaleAbs(np.asanyarray(colorizer.colorize(depth_frame).get_data()), alpha=1.0)
+        #depth_image = np.asanyarray(colorizer.colorize(depth_frame).get_data())
+        color_image = np.asanyarray(color_frame.get_data())
+
+        small_to_large_image_size_ratio = 0.5
+        depth_image = cv2.resize(depth_image,  # original image
+                               (0, 0),  # set fx and fy, not the final size
+                               fx=small_to_large_image_size_ratio,
+                               fy=small_to_large_image_size_ratio,
+                               interpolation=cv2.INTER_NEAREST)
+        depth_image = cv2.resize(depth_image,  # original image
+                                 (0, 0),  # set fx and fy, not the final size
+                                 fx=1/small_to_large_image_size_ratio,
+                                 fy=1/small_to_large_image_size_ratio,
+                                 interpolation=cv2.INTER_NEAREST)
+
+        depth_image = cv2.GaussianBlur(depth_image, (11, 11), 0, cv2.BORDER_DEFAULT)
+
+        sobelx = cv2.Sobel(depth_image, cv2.CV_64F, 1, 0, ksize=11, scale=1, delta=0)  # Find x and y gradients
+        sobely = cv2.Sobel(depth_image, cv2.CV_64F, 0, 1, ksize=11, scale=1, delta=0)
+
+        # Find magnitude and angle
+        magnitude = np.sqrt(sobelx ** 2.0 + sobely ** 2.0)
+        angle = np.arctan2(sobely, sobelx) * (180 / np.pi)
+
+        magnitude = cv2.normalize(magnitude, 0, 255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+
+        """
+        height, width, channels = magnitude.shape
+        for x in range(0, width):
+            for y in range(0, height):
+                print(magnitude[y, x])
+        """
+
+        # vertical line
+        height, width, channels = color_image.shape
+        p1 = (int(width / 2), height)
+        if t_line is not None:
+            p1 = (int(width / 2), t_line)
+        p2 = (int(width/2), 0)
+        line = (p1, p2)
+        cv2.line(color_image, p1, p2, color=(0, 0, 255), thickness=2)
+
+        # find measurement height line
+        h = p1[1] - p2[1]
+        sample_step = 1
+        offset = 0
+        pixel_end = None
+        p_end = None
+        p_end_fitness = -100000
+        world_pos_res = DepthRoiEvaluator.calc_world_pos(p1[0], p1[1], depth_frame)
+        p_start = None
+        if world_pos_res is not None:
+            p_start, depth_start = world_pos_res
+            while offset < h:
+                offset += sample_step
+                world_pos_res = DepthRoiEvaluator.calc_world_pos(
+                    p1[0], p1[1] - offset, depth_frame)
+                if world_pos_res is not None:
+                    end_candidate, depth_end = world_pos_res
+                    dir_vec = np.array(end_candidate) - np.array(p_start)
+                    diff = np.linalg.norm(dir_vec)
+                    fitness = 1 - abs(measurement_height - diff)
+                    if fitness > p_end_fitness:
+                        p_end = end_candidate
+                        p_end_fitness = fitness
+                        pixel_end = (p1[0], p1[1] - offset)
+            if pixel_end is not None:
+                cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
+
+        # find diameter line
+        padding = 2
+        pixel_left = None
+        pixel_right = None
+        if p_start is not None and p_end is not None:
+            # find left diameter pixel
+            offset = 0
+            best_mag = 0
+            while True:
+                offset += sample_step
+                curr_pixel = (pixel_end[0] - offset, pixel_end[1])
+                stop = curr_pixel[0] < 0 or curr_pixel[0] >= magnitude.shape[1] or \
+                       magnitude[curr_pixel[1], curr_pixel[0], 0] > 40
+                if stop:
+                    if best_mag < magnitude[curr_pixel[1], curr_pixel[0], 0]:
+                        best_mag = magnitude[curr_pixel[1], curr_pixel[0], 0]
+                        if pixel_left is not None:
+                            pixel_left = (pixel_left[0] + padding, pixel_left[1])
+                    else:
+                        break
+                pixel_left = curr_pixel
+            # find right diameter pixel
+            offset = 0
+            best_mag = 0
+            while True:
+                offset += sample_step
+                curr_pixel = (pixel_end[0] + offset, pixel_end[1])
+                stop = curr_pixel[0] < 0 or curr_pixel[0] >= magnitude.shape[1] or \
+                       magnitude[curr_pixel[1], curr_pixel[0], 0] > 40
+                if stop:
+                    if best_mag < magnitude[curr_pixel[1], curr_pixel[0], 0]:
+                        best_mag = magnitude[curr_pixel[1], curr_pixel[0], 0]
+                        if pixel_right is not None:
+                            pixel_right = (pixel_right[0] - padding, pixel_right[1])
+                    else:
+                        break
+                pixel_right = curr_pixel
+            cv2.line(color_image, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
+
+        cv2.imshow(color_image_frame, color_image)
+        cv2.imshow(depth_image_frame, depth_image)
+        cv2.imshow(depth_gradient_image_frame, magnitude)
+
+        key = cv2.waitKey(1)
+
+        if key == ord("q"):
+            break
+
+    pipeline.stop()
+    cv2.destroyAllWindows()
+
+
 class RangeIndexMapping:
     def __init__(self, ranges=[]):
         self.ranges = ranges
@@ -613,4 +783,5 @@ if __name__ == "__main__":
     #mser()
     #frame_align()
     #canny_2()
-    foreground_roi_depth_evaluation(measurement_height=1.3)
+    #foreground_roi_depth_evaluation(measurement_height=1.3)
+    gradient_intensity_evaluation(measurement_height=0.4)
