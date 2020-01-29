@@ -569,9 +569,18 @@ t_line = None
 def gradient_intensity_evaluation(measurement_height=0.125):
     global depth_frame, crop_mask, depth_start, depth_end, magnitude, t_line
     from depth_roi_evaluator import DepthRoiEvaluator
+    import advanced_mode_example
+
+    dev = advanced_mode_example.find_device_that_supports_advanced_mode()
+    advnc_mode = advanced_mode_example.enter_advanced_mode(dev)
+    depth_table = advnc_mode.get_depth_table()
+    depth_table.depthClampMax = 3500
+    depth_table.depthClampMin = 1000
+    advnc_mode.set_depth_table(depth_table)
 
     pipeline = rs.pipeline()
     config = rs.config()
+    config.enable_device(dev.get_info(rs.camera_info.serial_number))
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     pipeline.start(config)
@@ -615,6 +624,7 @@ def gradient_intensity_evaluation(measurement_height=0.125):
         #depth_image = np.asanyarray(colorizer.colorize(depth_frame).get_data())
         color_image = np.asanyarray(color_frame.get_data())
 
+        """
         small_to_large_image_size_ratio = 0.5
         depth_image = cv2.resize(depth_image,  # original image
                                (0, 0),  # set fx and fy, not the final size
@@ -626,8 +636,8 @@ def gradient_intensity_evaluation(measurement_height=0.125):
                                  fx=1/small_to_large_image_size_ratio,
                                  fy=1/small_to_large_image_size_ratio,
                                  interpolation=cv2.INTER_NEAREST)
-
         depth_image = cv2.GaussianBlur(depth_image, (11, 11), 0, cv2.BORDER_DEFAULT)
+        """
 
         sobelx = cv2.Sobel(depth_image, cv2.CV_64F, 1, 0, ksize=11, scale=1, delta=0)  # Find x and y gradients
         sobely = cv2.Sobel(depth_image, cv2.CV_64F, 0, 1, ksize=11, scale=1, delta=0)
@@ -663,12 +673,15 @@ def gradient_intensity_evaluation(measurement_height=0.125):
         p_end_fitness = -100000
         world_pos_res = DepthRoiEvaluator.calc_world_pos(p1[0], p1[1], depth_frame)
         p_start = None
+        diff = 0
+        depth_end = 0
+        best_depth = 0
         if world_pos_res is not None:
             p_start, depth_start = world_pos_res
             while offset < h:
                 offset += sample_step
                 world_pos_res = DepthRoiEvaluator.calc_world_pos(
-                    p1[0], p1[1] - offset, depth_frame)
+                    p1[0], p1[1] - offset, depth_frame, tolerance_radius=5)
                 if world_pos_res is not None:
                     end_candidate, depth_end = world_pos_res
                     dir_vec = np.array(end_candidate) - np.array(p_start)
@@ -678,8 +691,10 @@ def gradient_intensity_evaluation(measurement_height=0.125):
                         p_end = end_candidate
                         p_end_fitness = fitness
                         pixel_end = (p1[0], p1[1] - offset)
-            if pixel_end is not None:
-                cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
+                        best_depth = depth_end
+            #print(best_depth)
+            #if pixel_end is not None:
+            #    cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
 
         # find diameter line
         padding = 2
@@ -688,37 +703,52 @@ def gradient_intensity_evaluation(measurement_height=0.125):
         if p_start is not None and p_end is not None:
             # find left diameter pixel
             offset = 0
-            best_mag = 0
+            best_magnitude = 0
             while True:
                 offset += sample_step
                 curr_pixel = (pixel_end[0] - offset, pixel_end[1])
-                stop = curr_pixel[0] < 0 or curr_pixel[0] >= magnitude.shape[1] or \
-                       magnitude[curr_pixel[1], curr_pixel[0], 0] > 40
+                out_of_bounds = curr_pixel[0] < 0 or curr_pixel[0] >= magnitude.shape[1]
+                new_edge_found = False
+                if not out_of_bounds:
+                    new_edge_found = magnitude[curr_pixel[1], curr_pixel[0], 0] > 20
+                stop = out_of_bounds or new_edge_found
                 if stop:
-                    if best_mag < magnitude[curr_pixel[1], curr_pixel[0], 0]:
-                        best_mag = magnitude[curr_pixel[1], curr_pixel[0], 0]
-                        if pixel_left is not None:
-                            pixel_left = (pixel_left[0] + padding, pixel_left[1])
+                    if best_magnitude < magnitude[curr_pixel[1], curr_pixel[0], 0]:
+                        best_magnitude = magnitude[curr_pixel[1], curr_pixel[0], 0]
+                        pixel_left = (curr_pixel[0] + padding, curr_pixel[1])
                     else:
                         break
-                pixel_left = curr_pixel
             # find right diameter pixel
             offset = 0
-            best_mag = 0
+            best_magnitude = 0
             while True:
                 offset += sample_step
                 curr_pixel = (pixel_end[0] + offset, pixel_end[1])
-                stop = curr_pixel[0] < 0 or curr_pixel[0] >= magnitude.shape[1] or \
-                       magnitude[curr_pixel[1], curr_pixel[0], 0] > 40
+                out_of_bounds = curr_pixel[0] < 0 or curr_pixel[0] >= magnitude.shape[1]
+                new_edge_found = False
+                if not out_of_bounds:
+                    new_edge_found = magnitude[curr_pixel[1], curr_pixel[0], 0] > 20
+                stop = out_of_bounds or new_edge_found
                 if stop:
-                    if best_mag < magnitude[curr_pixel[1], curr_pixel[0], 0]:
-                        best_mag = magnitude[curr_pixel[1], curr_pixel[0], 0]
-                        if pixel_right is not None:
-                            pixel_right = (pixel_right[0] - padding, pixel_right[1])
+                    if (not out_of_bounds) and best_magnitude < magnitude[curr_pixel[1], curr_pixel[0], 0]:
+                        best_magnitude = magnitude[curr_pixel[1], curr_pixel[0], 0]
+                        pixel_right = (curr_pixel[0] - padding, curr_pixel[1])
                     else:
                         break
-                pixel_right = curr_pixel
-            cv2.line(color_image, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
+
+            if pixel_left is not None and pixel_right is not None:
+                cv2.line(color_image, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
+                cv2.line(depth_image, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
+                cv2.line(magnitude, pixel_left, pixel_right, color=(0, 0, 255), thickness=2)
+                wp_left, d_left = DepthRoiEvaluator.calc_world_pos(pixel_left[0], pixel_left[1],
+                                                                   depth_frame, tolerance_radius=0)
+                wp_right, d_right = DepthRoiEvaluator.calc_world_pos(pixel_right[0], pixel_right[1],
+                                                                     depth_frame, tolerance_radius=0)
+                dir_vec = np.array(wp_right) - np.array(wp_left)
+                diff = np.linalg.norm(dir_vec)
+                print("diameter is ", diff, "m")
+
+
 
         cv2.imshow(color_image_frame, color_image)
         cv2.imshow(depth_image_frame, depth_image)
@@ -774,6 +804,12 @@ class Kiefer(RangeIndexMatrix):
     def get_formzahl(self, height_class, diameter):
         self.get_value(height_class, diameter)
 
+
+def test_advanced():
+    import advanced_mode_example
+    advanced_mode_example.test_advanced_mode()
+
+
 if __name__ == "__main__":
     #show_capture_feed()
     #selective_search("fast")
@@ -784,4 +820,5 @@ if __name__ == "__main__":
     #frame_align()
     #canny_2()
     #foreground_roi_depth_evaluation(measurement_height=1.3)
-    gradient_intensity_evaluation(measurement_height=0.4)
+    gradient_intensity_evaluation(measurement_height=0.5)
+    #test_advanced()
