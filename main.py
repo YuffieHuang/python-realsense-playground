@@ -1,6 +1,12 @@
+#!/usr/bin/env python3
+
 import pyrealsense2 as rs
 import numpy as np
 import cv2
+import os
+import json
+
+from datetime import datetime
 
 
 def show_capture_feed():
@@ -63,10 +69,10 @@ def selective_search(method="fast"):
         frames = pipeline.wait_for_frames()
 
         depth_frame = frames.get_depth_frame()
-        #color_frame = frames.get_color_frame()
+        # color_frame = frames.get_color_frame()
 
         depth_image = np.asanyarray(depth_frame.get_data())
-        #color_image = np.asanyarray(color_frame.get_data())
+        # color_image = np.asanyarray(color_frame.get_data())
 
         im = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=alpha), cv2.COLORMAP_JET)
 
@@ -112,15 +118,15 @@ def selective_search(method="fast"):
 
 def get_labeled_img(labels):
     # Map component labels to hue val
-    label_hue = np.uint8(179*labels/np.max(labels))
-    blank_ch = 255*np.ones_like(label_hue)
+    label_hue = np.uint8(179 * labels / np.max(labels))
+    blank_ch = 255 * np.ones_like(label_hue)
     labeled_img = cv2.merge([label_hue, blank_ch, blank_ch])
 
     # cvt to BGR for display
     labeled_img = cv2.cvtColor(labeled_img, cv2.COLOR_HSV2BGR)
 
     # set bg label to black
-    labeled_img[label_hue==0] = 0
+    labeled_img[label_hue == 0] = 0
 
     return labeled_img
 
@@ -173,8 +179,8 @@ def blob_detector():
     pipeline.start(config)
 
     params = cv2.SimpleBlobDetector_Params()
-    #params.minThreshold = 100
-    #params.maxThreshold = 700
+    # params.minThreshold = 100
+    # params.maxThreshold = 700
     params.filterByArea = 1500
 
     detector = cv2.SimpleBlobDetector.create(params)
@@ -192,7 +198,8 @@ def blob_detector():
         depth_image = cv2.convertScaleAbs(depth_image, alpha=alpha)
 
         keypoints = detector.detect(depth_image)
-        im = cv2.drawKeypoints(depth_image, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        im = cv2.drawKeypoints(depth_image, keypoints, np.array([]), (0, 0, 255),
+                               cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
         cv2.imshow("Blobs", im)
         cv2.imshow("DepthImage", depth_image)
@@ -227,22 +234,22 @@ def canny_edge_detector():
         frames = pipeline.wait_for_frames()
         if run:
             depth_frame = colorizer.colorize(frames.get_depth_frame())
-            #depth_frame = frames.get_depth_frame()
+            # depth_frame = frames.get_depth_frame()
 
-        #depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=0.1)
+        # depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=0.1)
         depth_image = cv2.convertScaleAbs(np.asanyarray(depth_frame.get_data()), alpha=1.0)
 
-        #depth_thresh = cv2.threshold(depth_image, np.average(depth_image), 255, 1)[1]
+        # depth_thresh = cv2.threshold(depth_image, np.average(depth_image), 255, 1)[1]
         depth_thresh = cv2.threshold(depth_image, 50, 255, 1)[1]
         imgray = cv2.cvtColor(depth_thresh, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(imgray, 127, 255, 0)
 
         edges = cv2.Canny(depth_image, 100, 200, L2gradient=True)
 
-        #ret, labels = cv2.connectedComponents(depth_image)
-        #components = get_labeled_img(labels)
+        # ret, labels = cv2.connectedComponents(depth_image)
+        # components = get_labeled_img(labels)
 
-        #contours_img, contours, hierarchy = cv2.findContours(depth_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # contours_img, contours, hierarchy = cv2.findContours(depth_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         contours_img, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         """
@@ -263,13 +270,11 @@ def canny_edge_detector():
             blank_image = cv2.drawContours(contours_img, good_contours, draw_contour%len(good_contours), (0,125,0), 3)
         """
 
-        #image = cv2.drawContours(blank_image, good_contours, -1, (0,255,0), 1) # -1 means filled, > 0 is line thickness
-
-
+        # image = cv2.drawContours(blank_image, good_contours, -1, (0,255,0), 1) # -1 means filled, > 0 is line thickness
 
         cv2.imshow("DepthImage", depth_image)
-        #cv2.imshow("Edges", edges)
-        #cv2.imshow("connected comps", components)
+        # cv2.imshow("Edges", edges)
+        # cv2.imshow("connected comps", components)
         cv2.imshow("contours", contours_img)
         cv2.imshow("thresholded", depth_thresh)
 
@@ -394,7 +399,7 @@ def frame_align():
         color_image = np.asanyarray(color_frame.get_data())
 
         cv2.imshow("DepthImage", depth_image)
-        cv2.imshow("ColorImage", color_image)
+        cv2.imshow(color_image_frame, color_image)
 
         key = cv2.waitKey(1)
 
@@ -521,7 +526,7 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
         # mask source images based on ROI
         original_color = color_image.copy()
         original_depth = depth_image.copy()
-        #color_image = cv2.bitwise_and(color_image, color_image, mask=foreground_mask)
+        # color_image = cv2.bitwise_and(color_image, color_image, mask=foreground_mask)
         depth_image = cv2.bitwise_and(depth_image, depth_image, mask=foreground_mask)
 
         # measure ROI diameter @ measurement height
@@ -532,12 +537,12 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
                                                    debug_img=color_image)
         except Exception as e:
             pass
-        #print("diameter", diameter)
+        # print("diameter", diameter)
 
         # visualize result
         cv2.imshow("ForegroundMask", foreground_mask)
         cv2.imshow(color_image_frame, color_image)
-        #cv2.imshow("Original Color", original_color)
+        # cv2.imshow("Original Color", original_color)
         cv2.imshow("Original Depth", original_depth)
 
         key = cv2.waitKey(1)
@@ -566,6 +571,7 @@ def foreground_roi_depth_evaluation(measurement_height=0.125):
 magnitude = None
 t_line = None
 
+
 def gradient_intensity_evaluation(measurement_height=0.125):
     global depth_frame, crop_mask, depth_start, depth_end, magnitude, t_line
     from depth_roi_evaluator import DepthRoiEvaluator
@@ -591,8 +597,8 @@ def gradient_intensity_evaluation(measurement_height=0.125):
             t_line = y
         if event == cv2.EVENT_MOUSEMOVE:
             pass
-            #print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
-            #print("magnitude at[", x, ",", y, "]", magnitude[y, x, 0])
+            # print("distance at[", x, ",", y, "]", depth_frame.get_distance(x, y))
+            # print("magnitude at[", x, ",", y, "]", magnitude[y, x, 0])
 
     color_image_frame = "ColorImage"
     depth_image_frame = "DepthImage"
@@ -621,7 +627,7 @@ def gradient_intensity_evaluation(measurement_height=0.125):
 
         # extract depth and color images
         depth_image = cv2.convertScaleAbs(np.asanyarray(colorizer.colorize(depth_frame).get_data()), alpha=1.0)
-        #depth_image = np.asanyarray(colorizer.colorize(depth_frame).get_data())
+        # depth_image = np.asanyarray(colorizer.colorize(depth_frame).get_data())
         color_image = np.asanyarray(color_frame.get_data())
 
         """
@@ -655,14 +661,18 @@ def gradient_intensity_evaluation(measurement_height=0.125):
                 print(magnitude[y, x])
         """
 
+        # create an untouched copy of the image
+        color_image_copy = color_image.copy()
+        depth_image_copy = depth_image.copy()
+        magnitude_image_copy = magnitude.copy()
+
         # vertical line
         height, width, channels = color_image.shape
         p1 = (int(width / 2), height)
         if t_line is not None:
             p1 = (int(width / 2), t_line)
-        p2 = (int(width/2), 0)
+        p2 = (int(width / 2), 0)
         line = (p1, p2)
-        cv2.line(color_image, p1, p2, color=(0, 0, 255), thickness=2)
 
         # find measurement height line
         h = p1[1] - p2[1]
@@ -692,14 +702,15 @@ def gradient_intensity_evaluation(measurement_height=0.125):
                         p_end_fitness = fitness
                         pixel_end = (p1[0], p1[1] - offset)
                         best_depth = depth_end
-            #print(best_depth)
-            #if pixel_end is not None:
+            # print(best_depth)
+            # if pixel_end is not None:
             #    cv2.circle(color_image, pixel_end, radius=10, color=(255, 0, 0), thickness=-1)
 
         # find diameter line
         padding = 2
         pixel_left = None
         pixel_right = None
+
         if p_start is not None and p_end is not None:
             # find left diameter pixel
             offset = 0
@@ -746,18 +757,41 @@ def gradient_intensity_evaluation(measurement_height=0.125):
                                                                      depth_frame, tolerance_radius=0)
                 dir_vec = np.array(wp_right) - np.array(wp_left)
                 diff = np.linalg.norm(dir_vec)
-                print("diameter is ", diff, "m")
-
-
-
-        cv2.imshow(color_image_frame, color_image)
-        cv2.imshow(depth_image_frame, depth_image)
-        cv2.imshow(depth_gradient_image_frame, magnitude)
+                # print("diameter is ", diff, "m")
 
         key = cv2.waitKey(1)
 
+        cv2.line(color_image, p1, p2, color=(0, 0, 255), thickness=2)
+        cv2.line(depth_image, p1, p2, color=(0, 0, 255), thickness=2)
+        cv2.line(magnitude, p1, p2, color=(0, 0, 255), thickness=2)
+
+        cv2.imshow(color_image_frame, color_image)
+        # cv2.imshow(depth_image_frame, depth_image)
+        # cv2.imshow(depth_gradient_image_frame, magnitude)
+
+        # store images to save in dict
+        image_dict = dict()
+        image_dict['plain'] = dict()
+        image_dict['plain']['clr'] = color_image_copy
+        image_dict['plain']['depth'] = depth_image_copy
+        image_dict['plain']['grad'] = magnitude_image_copy
+
+        image_dict['with_markers'] = dict()
+        image_dict['with_markers']['clr'] = color_image
+        image_dict['with_markers']['depth'] = depth_image
+        image_dict['with_markers']['grad'] = magnitude
+
+        configuration = dict()
+        configuration['diameter'] = diff
+
+        # edit here
         if key == ord("q"):
             break
+        elif key == ord("c"):
+            try:
+                save_test_data(image_dict, configuration)
+            except:
+                print('  (e) - Error in capturing a snapshot.')
 
     pipeline.stop()
     cv2.destroyAllWindows()
@@ -772,7 +806,7 @@ class RangeIndexMapping:
     def get_range_index(self, i):
         range_index = 0
         for r in self.ranges:
-            if i in range(r[0], r[1]+1):
+            if i in range(r[0], r[1] + 1):
                 return range_index
             range_index += 1
         return -1
@@ -794,8 +828,10 @@ class RangeIndexMatrix:
 class Kiefer(RangeIndexMatrix):
     def __init__(self):
         super().__init__(
-            x_mapping=RangeIndexMapping(ranges=[(7, 10), (10, 15), (15, 20), (20, 25), (25, 30), (30, 35)]), # heightclass
-            y_mapping=RangeIndexMapping(ranges=[(0, 10), (10, 20), (20, 25), (30, 35), (40, 45), (50, 55), (60, 65), (65, 70)]) # diameter
+            x_mapping=RangeIndexMapping(ranges=[(7, 10), (10, 15), (15, 20), (20, 25), (25, 30), (30, 35)]),
+            # heightclass
+            y_mapping=RangeIndexMapping(
+                ranges=[(0, 10), (10, 20), (20, 25), (30, 35), (40, 45), (50, 55), (60, 65), (65, 70)])  # diameter
         )
         self.values[0][0] = 0.34
         self.values[0][1] = 0.48
@@ -810,15 +846,73 @@ def test_advanced():
     advanced_mode_example.test_advanced_mode()
 
 
+def draw_center_line(image):
+    height, width, channels = image.shape
+    p1 = (int(width / 2), height)
+    if t_line is not None:
+        p1 = (int(width / 2), t_line)
+    p2 = (int(width / 2), 0)
+    line = (p1, p2)
+    cv2.line(image, p1, p2, color=(0, 0, 255), thickness=2)
+    return image
+
+
+def save_test_data(images, configuration, show_composite=True):
+    timestamp = datetime.now().strftime('%H-%M-%S_%d-%m-%Y')
+
+    dest_dir = 'out'
+
+    def mkfilename(delimiter, *parts): return delimiter.join(list(parts))
+
+    verbose = True
+    save_image(os.path.join(dest_dir, mkfilename('_', 'p', timestamp, 'clr.png')),
+               images['plain']['clr'], verbose)
+    save_image(os.path.join(dest_dir, mkfilename('_', 'p', timestamp, 'depth.png')),
+               images['plain']['depth'], verbose)
+    save_image(os.path.join(dest_dir, mkfilename('_', 'p', timestamp, 'grad.png')),
+               images['plain']['grad'], verbose)
+    save_image(os.path.join(dest_dir, mkfilename('_', 'm', timestamp, 'clr.png')),
+               images['with_markers']['clr'], verbose)
+    save_image(os.path.join(dest_dir, mkfilename('_', 'm', timestamp, 'depth.png')),
+               images['with_markers']['depth'], verbose)
+    save_image(os.path.join(dest_dir, mkfilename('_', 'm', timestamp, 'grad.png')),
+               images['with_markers']['grad'], verbose)
+
+    save_configuration(os.path.join(dest_dir, mkfilename('_', timestamp, 'meta.json')), configuration, False)
+
+    # generate composite
+    clr_comp = cv2.hconcat([images['plain']['clr'], images['with_markers']['clr']])
+    depth_comp = cv2.hconcat([images['plain']['depth'], images['with_markers']['depth']])
+    grad_comp = cv2.hconcat([images['plain']['grad'], images['with_markers']['grad']])
+    composite = cv2.vconcat([clr_comp, depth_comp, grad_comp])
+    save_image(os.path.join(dest_dir, mkfilename('_', timestamp, 'composite.png')),
+               composite, verbose)
+
+    if show_composite:
+        cv2.imshow('composite', composite)
+
+
+def save_image(filepath, image, verbose=False):
+    if verbose: print('  (i) - Saving image to: ', filepath)
+    cv2.imwrite(filepath, image)
+
+
+def save_configuration(filepath, config, verbose=False):
+    with open(filepath, 'w') as outfile:
+        if verbose: print('  (i) - Saving config to: ', filepath)
+
+        json.dump(config, outfile)
+
+
 if __name__ == "__main__":
-    #show_capture_feed()
-    #selective_search("fast")
-    #connected_components()
-    #blob_detector()
-    #canny_edge_detector()
-    #mser()
-    #frame_align()
-    #canny_2()
-    #foreground_roi_depth_evaluation(measurement_height=1.3)
+    # show_capture_feed()
+    # selective_search("fast")
+    # connected_components()
+    # blob_detector()
+    # canny_edge_detector()
+    # mser()
+    # frame_align()
+    # canny_2()
+    # foreground_roi_depth_evaluation(measurement_height=1.3)
     gradient_intensity_evaluation(measurement_height=0.5)
-    #test_advanced()
+    # test_advanced()
